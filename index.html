@@ -63,10 +63,13 @@
     const countDisplay = document.getElementById('count');
     countDisplay.textContent = berryCount;
 
-    // Reliable images from Wikimedia Commons
-    const treeImage = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Tree_icon_01.png/96px-Tree_icon_01.png";
-    const bushImage = "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Bush_icon.png/96px-Bush_icon.png";
-    const berryImage = "https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Strawberry_icon.svg/48px-Strawberry_icon.svg.png";
+    // Images hosted in your repo
+    const treeImage = "images/tree.png";
+    const bushImage = "images/bush.png";
+    const berryImage = "images/berry.png";
+
+    // Sound effect
+    const popSound = new Audio("sounds/pop.mp3");
 
     // Create 30 trees + 30 bushes
     let objects = [];
@@ -97,25 +100,28 @@
         berry.style.top = obj.style.top;
         berry.style.left = obj.style.left;
 
-        obj.addEventListener('click', () => revealBerry(berry, obj));
-        obj.addEventListener('touchstart', () => revealBerry(berry, obj));
+        obj.addEventListener('click', () => {
+          obj.remove();
+          berry.style.display = 'block';
+          gameArea.appendChild(berry);
+          berry.addEventListener('click', () => collectBerry(berry));
+        });
 
-        gameArea.appendChild(berry);
+        obj.addEventListener('touchstart', () => {
+          obj.remove();
+          berry.style.display = 'block';
+          gameArea.appendChild(berry);
+          berry.addEventListener('touchstart', () => collectBerry(berry));
+        });
       }
 
       gameArea.appendChild(obj);
     });
 
-    function revealBerry(berry, obj) {
-      berry.style.display = 'block';
-      obj.remove();
-      berry.addEventListener('click', () => collectBerry(berry));
-      berry.addEventListener('touchstart', () => collectBerry(berry));
-    }
-
     function collectBerry(berry) {
       berry.remove();
       collected++;
+      popSound.play();
       countDisplay.textContent = berryCount - collected;
       if (collected === berryCount) {
         document.getElementById('clue').style.display = 'block';
