@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
-      background: #a8d08d;
+      background: url('https://upload.wikimedia.org/wikipedia/commons/4/4d/Grass_texture.jpg') repeat;
+      background-size: 200px 200px;
       font-family: sans-serif;
       text-align: center;
       margin: 0;
@@ -19,6 +20,7 @@
     .object, .berry {
       position: absolute;
       touch-action: manipulation;
+      z-index: 1;
     }
     .object {
       width: 90px;
@@ -32,13 +34,20 @@
     #clue {
       display: none;
       font-size: 1.5em;
-      background: rgba(255,255,255,0.8);
+      background: rgba(255,255,255,0.9);
       padding: 10px;
       border-radius: 8px;
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
+      z-index: 999;
+      opacity: 0;
+      animation: fadeIn 1.5s ease forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+      to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
     }
     #counter {
       position: absolute;
@@ -48,6 +57,7 @@
       padding: 5px 10px;
       border-radius: 5px;
       font-size: 1.2em;
+      z-index: 1000;
     }
   </style>
 </head>
@@ -68,8 +78,10 @@
     const bushImage = "images/bush.png";
     const berryImage = "images/berry.png";
 
-    // Sound effect
+    // Sound effects
     const popSound = new Audio("sounds/pop.mp3");
+    const tadaSound = new Audio("sounds/tada.mp3");
+    const rustlingSound = new Audio("sounds/rustling.mp3");
 
     // Create 30 trees + 30 bushes
     let objects = [];
@@ -93,6 +105,7 @@
       obj.style.top = Math.random() * (window.innerHeight - 100) + 'px';
       obj.style.left = Math.random() * (window.innerWidth - 100) + 'px';
 
+      // If this object hides a berry
       if (berryPositions.has(index)) {
         const berry = document.createElement('img');
         berry.src = berryImage;
@@ -101,6 +114,8 @@
         berry.style.left = obj.style.left;
 
         obj.addEventListener('click', () => {
+          rustlingSound.currentTime = 0;
+          rustlingSound.play();
           obj.remove();
           berry.style.display = 'block';
           gameArea.appendChild(berry);
@@ -108,10 +123,24 @@
         });
 
         obj.addEventListener('touchstart', () => {
+          rustlingSound.currentTime = 0;
+          rustlingSound.play();
           obj.remove();
           berry.style.display = 'block';
           gameArea.appendChild(berry);
           berry.addEventListener('touchstart', () => collectBerry(berry));
+        });
+      } else {
+        // If no berry, still play rustling sound
+        obj.addEventListener('click', () => {
+          rustlingSound.currentTime = 0;
+          rustlingSound.play();
+          obj.remove();
+        });
+        obj.addEventListener('touchstart', () => {
+          rustlingSound.currentTime = 0;
+          rustlingSound.play();
+          obj.remove();
         });
       }
 
@@ -121,13 +150,17 @@
     function collectBerry(berry) {
       berry.remove();
       collected++;
+      popSound.currentTime = 0;
       popSound.play();
       countDisplay.textContent = berryCount - collected;
       if (collected === berryCount) {
-        document.getElementById('clue').style.display = 'block';
+        const clue = document.getElementById('clue');
+        clue.style.display = 'block';
+        clue.style.animation = 'fadeIn 1.5s ease forwards';
+        tadaSound.currentTime = 0;
+        tadaSound.play();
       }
     }
   </script>
 </body>
 </html>
-
