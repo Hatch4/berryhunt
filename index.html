@@ -96,18 +96,3 @@
         berry.src = berryImage;
         berry.className = 'berry';
         berry.style.top = obj.style.top;
-        berry.style.left = obj.style.left;
-
-        obj.addEventListener('click', () => revealBerry(berry, obj));
-        obj.addEventListener('touchstart', () => revealBerry(berry, obj));
-
-        gameArea.appendChild(berry);
-      }
-
-      gameArea.appendChild(obj);
-    });
-
-    function revealBerry(berry, obj) {
-      berry.style.display = 'block';
-      obj.remove();
-      berry.addEventListener('click', () => collectBerry(berry
