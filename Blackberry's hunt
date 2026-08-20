@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Hidden Berry Hunt</title>
+  <title>Blackberry's Hunt</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
@@ -21,8 +21,8 @@
       touch-action: manipulation;
     }
     .object {
-      width: 80px;
-      height: 80px;
+      width: 90px;
+      height: 90px;
       cursor: pointer;
     }
     .berry {
@@ -54,56 +54,45 @@
 <body>
   <div id="gameArea">
     <div id="counter">Berries left: <span id="count"></span></div>
-    <div id="clue">🍓 Clue: "The treasure is near the waterfall."</div>
+    <div id="clue">🍇 Clue: "The treasure is hidden where the blackberry vines meet the old oak."</div>
   </div>
 
   <script>
     const gameArea = document.getElementById('gameArea');
-    const berryCount = 5;
+    const berryCount = 15;
     let collected = 0;
     const countDisplay = document.getElementById('count');
     countDisplay.textContent = berryCount;
 
-    const objects = [
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/Bush_icon.svg/80px-Bush_icon.svg.png',
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Rock_icon.svg/80px-Rock_icon.svg.png'
-    ];
+    // Reliable PNG images
+    const treeImage = "https://i.ibb.co/3cJ2VnV/tree.png";
+    const bushImage = "https://i.ibb.co/4jYjVnM/bush.png";
+    const berryImage = "https://i.ibb.co/6bY0VnM/berry.png";
 
-    for (let i = 0; i < berryCount; i++) {
+    // Create 30 trees + 30 bushes
+    let objects = [];
+    for (let i = 0; i < 30; i++) objects.push(treeImage);
+    for (let i = 0; i < 30; i++) objects.push(bushImage);
+
+    // Shuffle objects
+    objects = objects.sort(() => Math.random() - 0.5);
+
+    // Randomly choose 15 objects to hide berries
+    let berryPositions = new Set();
+    while (berryPositions.size < berryCount) {
+      berryPositions.add(Math.floor(Math.random() * objects.length));
+    }
+
+    // Place objects on screen
+    objects.forEach((src, index) => {
       const obj = document.createElement('img');
-      obj.src = objects[Math.floor(Math.random() * objects.length)];
+      obj.src = src;
       obj.className = 'object';
       obj.style.top = Math.random() * (window.innerHeight - 100) + 'px';
       obj.style.left = Math.random() * (window.innerWidth - 100) + 'px';
 
-      const berry = document.createElement('img');
-      berry.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Strawberry_icon.svg/40px-Strawberry_icon.svg.png';
-      berry.className = 'berry';
-      berry.style.top = obj.style.top;
-      berry.style.left = obj.style.left;
-
-      obj.addEventListener('click', () => revealBerry(berry, obj));
-      obj.addEventListener('touchstart', () => revealBerry(berry, obj));
-
-      gameArea.appendChild(berry);
-      gameArea.appendChild(obj);
-    }
-
-    function revealBerry(berry, obj) {
-      berry.style.display = 'block';
-      obj.remove();
-      berry.addEventListener('click', () => collectBerry(berry));
-      berry.addEventListener('touchstart', () => collectBerry(berry));
-    }
-
-    function collectBerry(berry) {
-      berry.remove();
-      collected++;
-      countDisplay.textContent = berryCount - collected;
-      if (collected === berryCount) {
-        document.getElementById('clue').style.display = 'block';
-      }
-    }
-  </script>
-</body>
-</html>
+      if (berryPositions.has(index)) {
+        const berry = document.createElement('img');
+        berry.src = berryImage;
+        berry.className = 'berry';
+        berry.style.top = obj.style.top;
