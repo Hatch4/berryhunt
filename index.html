@@ -1,166 +1,478 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Blackberry's Hunt</title>
+  <title>Blackberry's Hunt – Adventure Edition</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
-      background: url('https://upload.wikimedia.org/wikipedia/commons/4/4d/Grass_texture.jpg') repeat;
-      background-size: 200px 200px;
-      font-family: sans-serif;
-      text-align: center;
       margin: 0;
       overflow: hidden;
+      font-family: sans-serif;
     }
     #gameArea {
       position: relative;
       width: 100vw;
       height: 100vh;
+      background-size: cover;
+      background-position: center;
     }
-    .object, .berry {
+    #uiBar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      padding: 5px 10px;
+      box-sizing: border-box;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(0,0,0,0.4);
+      color: #fff;
+      z-index: 1000;
+      font-size: 0.9em;
+    }
+    #messageBox {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255,255,255,0.9);
+      padding: 10px 15px;
+      border-radius: 8px;
+      max-width: 80vw;
+      font-size: 0.9em;
+      z-index: 1000;
+    }
+    .object, .berry, .creature, #player {
       position: absolute;
       touch-action: manipulation;
       z-index: 1;
+      user-select: none;
     }
     .object {
-      width: 90px;
-      height: 90px;
+      width: 80px;
+      height: 80px;
       cursor: pointer;
     }
     .berry {
       width: 40px;
-      display: none;
+      cursor: pointer;
     }
-    #clue {
-      display: none;
-      font-size: 1.5em;
-      background: rgba(255,255,255,0.9);
-      padding: 10px;
-      border-radius: 8px;
+    .creature {
+      width: 60px;
+      height: 60px;
+    }
+    #player {
+      width: 70px;
+      height: 70px;
+      z-index: 10;
+      transition: transform 0.15s linear;
+    }
+    .particle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 5;
+    }
+    #mapOverlay {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      z-index: 999;
-      opacity: 0;
-      animation: fadeIn 1.5s ease forwards;
+      background: rgba(255,255,255,0.95);
+      padding: 15px;
+      border-radius: 10px;
+      z-index: 2000;
+      display: none;
+      max-width: 80vw;
+      text-align: left;
     }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
-      to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    #mapOverlay h2 {
+      margin-top: 0;
     }
-    #counter {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      background: rgba(255,255,255,0.7);
-      padding: 5px 10px;
-      border-radius: 5px;
-      font-size: 1.2em;
-      z-index: 1000;
+    #mapOverlay button {
+      margin-top: 10px;
+      padding: 6px 12px;
+      font-size: 0.9em;
     }
   </style>
 </head>
 <body>
   <div id="gameArea">
-    <div id="counter">Berries left: <span id="count"></span></div>
-    <div id="clue">🍇 Clue: "The treasure is hidden where the blackberry vines meet the old oak."</div>
+    <div id="uiBar">
+      <div>Level: <span id="levelName"></span></div>
+      <div>Berries left: <span id="berryCount"></span></div>
+    </div>
+    <div id="messageBox"></div>
+    <div id="mapOverlay">
+      <h2>Blackberry's Map</h2>
+      <p>The berries form a trail leading to the Oak Grove. The treasure lies beneath the old oak where the vines meet its roots.</p>
+      <button id="goToOakButton">Travel to Oak Grove</button>
+    </div>
   </div>
+
   <script>
     const gameArea = document.getElementById('gameArea');
-    const berryCount = 15;
-    let collected = 0;
-    const countDisplay = document.getElementById('count');
-    countDisplay.textContent = berryCount;
+    const levelNameEl = document.getElementById('levelName');
+    const berryCountEl = document.getElementById('berryCount');
+    const messageBox = document.getElementById('messageBox');
+    const mapOverlay = document.getElementById('mapOverlay');
+    const goToOakButton = document.getElementById('goToOakButton');
 
-    // Images hosted in your repo
-    const treeImage = "images/tree.png";
-    const bushImage = "images/bush.png";
+    // --- Assets (replace with your own local files if you want) ---
+    const levelData = [
+      {
+        name: "Meadow",
+        background: "https://upload.wikimedia.org/wikipedia/commons/4/4d/Grass_texture.jpg",
+        objects: ["images/tree.png", "images/bush.png"],
+        creatures: ["images/rabbit.png"],
+        berries: 5
+      },
+      {
+        name: "Forest Edge",
+        background: "https://upload.wikimedia.org/wikipedia/commons/6/6f/Forest_path.jpg",
+        objects: ["images/tree.png", "images/bush.png", "images/log.png"],
+        creatures: ["images/squirrel.png"],
+        berries: 5
+      },
+      {
+        name: "Deep Woods",
+        background: "https://upload.wikimedia.org/wikipedia/commons/3/3f/Dark_forest.jpg",
+        objects: ["images/tree.png", "images/bush.png", "images/rock.png"],
+        creatures: ["images/owl.png"],
+        berries: 5
+      },
+      {
+        name: "Oak Grove",
+        background: "https://upload.wikimedia.org/wikipedia/commons/5/5c/Oak_tree.jpg",
+        objects: ["images/oak.png", "images/bush.png"],
+        creatures: ["images/bird.png"],
+        berries: 0 // final treasure, no berries here
+      }
+    ];
+
     const berryImage = "images/berry.png";
 
-    // Sound effects
-    const popSound = new Audio("sounds/pop.mp3");
-    const tadaSound = new Audio("sounds/tada.mp3");
+    // Sounds (replace with your own local files)
+    const ambientSounds = [
+      new Audio("sounds/ambient_meadow.mp3"),
+      new Audio("sounds/ambient_forest.mp3"),
+      new Audio("sounds/ambient_deepwoods.mp3"),
+      new Audio("sounds/ambient_oakgrove.mp3")
+    ];
     const rustlingSound = new Audio("sounds/rustling.mp3");
+    const popSound = new Audio("sounds/pop.mp3");
+    const creatureSound = new Audio("sounds/creature.mp3");
+    const treasureSound = new Audio("sounds/tada.mp3");
 
-    // Create 30 trees + 30 bushes
+    ambientSounds.forEach(a => { a.loop = true; a.volume = 0.4; });
+
+    let currentLevelIndex = 0;
+    let berriesLeft = 0;
+    let collectedTotal = 0;
+    let player;
     let objects = [];
-    for (let i = 0; i < 30; i++) objects.push(treeImage);
-    for (let i = 0; i < 30; i++) objects.push(bushImage);
+    let creatures = [];
+    let randomEventTimer = null;
 
-    // Shuffle objects randomly
-    objects = objects.sort(() => Math.random() - 0.5);
+    // --- Player setup ---
+    function createPlayer() {
+      player = document.createElement('img');
+      player.id = "player";
+      player.src = "images/blackberry.png"; // your avatar
+      player.style.left = "50%";
+      player.style.top = "50%";
+      player.style.transform = "translate(-50%, -50%)";
+      gameArea.appendChild(player);
 
-    // Randomly choose 15 objects to hide berries
-    let berryPositions = new Set();
-    while (berryPositions.size < berryCount) {
-      berryPositions.add(Math.floor(Math.random() * objects.length));
+      gameArea.addEventListener('click', (e) => {
+        if (e.target.classList.contains('object') || e.target.classList.contains('berry') || e.target.classList.contains('creature')) {
+          // object/berry/creature clicks handled separately
+          return;
+        }
+        movePlayerTo(e.clientX, e.clientY);
+      });
     }
 
-    // Place objects on screen
-    objects.forEach((src, index) => {
-      const obj = document.createElement('img');
-      obj.src = src;
-      obj.className = 'object';
-      obj.style.top = Math.random() * (window.innerHeight - 100) + 'px';
-      obj.style.left = Math.random() * (window.innerWidth - 100) + 'px';
+    function movePlayerTo(x, y) {
+      const rect = gameArea.getBoundingClientRect();
+      const px = x - rect.left;
+      const py = y - rect.top;
+      player.style.left = px + "px";
+      player.style.top = py + "px";
+      player.style.transform = "translate(-50%, -50%)";
+    }
 
-      // If this object hides a berry
-      if (berryPositions.has(index)) {
-        const berry = document.createElement('img');
-        berry.src = berryImage;
-        berry.className = 'berry';
-        berry.style.top = obj.style.top;
-        berry.style.left = obj.style.left;
+    // --- Messaging ---
+    function showMessage(text, duration = 3000) {
+      messageBox.textContent = text;
+      if (duration > 0) {
+        setTimeout(() => {
+          if (messageBox.textContent === text) {
+            messageBox.textContent = "";
+          }
+        }, duration);
+      }
+    }
 
-        obj.addEventListener('click', () => {
-          rustlingSound.currentTime = 0;
-          rustlingSound.play();
-          obj.remove();
-          berry.style.display = 'block';
-          gameArea.appendChild(berry);
-          berry.addEventListener('click', () => collectBerry(berry));
-        });
+    // --- Level setup ---
+    function startLevel(index) {
+      currentLevelIndex = index;
+      const level = levelData[index];
 
-        obj.addEventListener('touchstart', () => {
-          rustlingSound.currentTime = 0;
-          rustlingSound.play();
-          obj.remove();
-          berry.style.display = 'block';
-          gameArea.appendChild(berry);
-          berry.addEventListener('touchstart', () => collectBerry(berry));
-        });
-      } else {
-        // If no berry, still play rustling sound
-        obj.addEventListener('click', () => {
-          rustlingSound.currentTime = 0;
-          rustlingSound.play();
-          obj.remove();
-        });
-        obj.addEventListener('touchstart', () => {
-          rustlingSound.currentTime = 0;
-          rustlingSound.play();
-          obj.remove();
-        });
+      // Clear previous
+      gameArea.style.backgroundImage = `url('${level.background}')`;
+      objects.forEach(o => o.remove());
+      creatures.forEach(c => c.remove());
+      objects = [];
+      creatures = [];
+      mapOverlay.style.display = "none";
+
+      // Stop all ambient sounds
+      ambientSounds.forEach(a => { a.pause(); a.currentTime = 0; });
+      // Play current ambient
+      ambientSounds[index].play().catch(() => {});
+
+      levelNameEl.textContent = level.name;
+
+      // Berries
+      berriesLeft = level.berries;
+      berryCountEl.textContent = berriesLeft;
+
+      // Place objects
+      const totalObjects = 25;
+      const berryPositions = new Set();
+      while (berryPositions.size < level.berries) {
+        berryPositions.add(Math.floor(Math.random() * totalObjects));
       }
 
-      gameArea.appendChild(obj);
-    });
+      for (let i = 0; i < totalObjects; i++) {
+        const src = level.objects[Math.floor(Math.random() * level.objects.length)];
+        const obj = document.createElement('img');
+        obj.src = src;
+        obj.className = 'object';
+
+        const x = Math.random() * (window.innerWidth - 100);
+        const y = Math.random() * (window.innerHeight - 140) + 60;
+        obj.style.left = x + "px";
+        obj.style.top = y + "px";
+
+        if (berryPositions.has(i)) {
+          // Mini puzzle: some objects require multiple taps
+          const tapsRequired = Math.random() < 0.4 ? 3 : 1;
+          let taps = 0;
+
+          obj.addEventListener('click', () => {
+            taps++;
+            rustlingSound.currentTime = 0;
+            rustlingSound.play();
+            createParticles(x + 40, y + 40, "#ff00ff");
+            if (taps >= tapsRequired) {
+              obj.remove();
+              spawnBerryAt(x + 20, y + 20);
+            } else {
+              showMessage("Blackberry: \"Hmm, something's hidden here... keep searching!\"", 1500);
+            }
+          });
+        } else {
+          obj.addEventListener('click', () => {
+            rustlingSound.currentTime = 0;
+            rustlingSound.play();
+            createParticles(x + 40, y + 40, "#00ff00");
+            obj.remove();
+          });
+        }
+
+        gameArea.appendChild(obj);
+        objects.push(obj);
+      }
+
+      // Creatures
+      spawnCreatures(level);
+
+      // Random events
+      if (randomEventTimer) clearInterval(randomEventTimer);
+      randomEventTimer = setInterval(triggerRandomEvent, 8000);
+
+      // Story
+      if (index === 0) {
+        showMessage("Blackberry: \"Let's start in the meadow. I smell berries nearby!\"", 4000);
+      } else if (index === 1) {
+        showMessage("Blackberry: \"The forest edge is thicker... the berries must be hiding well.\"", 4000);
+      } else if (index === 2) {
+        showMessage("Blackberry: \"It's dark here. Stay close, and watch for glowing berries.\"", 4000);
+      } else if (index === 3) {
+        showMessage("Blackberry: \"We've reached the Oak Grove. The treasure must be here.\"", 4000);
+        showTreasureScene();
+      }
+    }
+
+    // --- Berry handling ---
+    function spawnBerryAt(x, y) {
+      const berry = document.createElement('img');
+      berry.src = berryImage;
+      berry.className = 'berry';
+      berry.style.left = x + "px";
+      berry.style.top = y + "px";
+
+      berry.addEventListener('click', () => {
+        collectBerry(berry);
+      });
+
+      gameArea.appendChild(berry);
+    }
 
     function collectBerry(berry) {
       berry.remove();
-      collected++;
+      berriesLeft--;
+      collectedTotal++;
+      berryCountEl.textContent = berriesLeft;
       popSound.currentTime = 0;
       popSound.play();
-      countDisplay.textContent = berryCount - collected;
-      if (collected === berryCount) {
-        const clue = document.getElementById('clue');
-        clue.style.display = 'block';
-        clue.style.animation = 'fadeIn 1.5s ease forwards';
-        tadaSound.currentTime = 0;
-        tadaSound.play();
+      createParticles(parseInt(berry.style.left) + 20, parseInt(berry.style.top) + 20, "#ffcc00");
+
+      if (berriesLeft <= 0 && currentLevelIndex < levelData.length - 1) {
+        showMessage("Blackberry: \"We found all the berries here! Let's see where they lead...\"", 4000);
+        showMap();
       }
     }
+
+    // --- Map & level progression ---
+    function showMap() {
+      mapOverlay.style.display = "block";
+    }
+
+    goToOakButton.addEventListener('click', () => {
+      mapOverlay.style.display = "none";
+      if (currentLevelIndex < levelData.length - 1) {
+        startLevel(currentLevelIndex + 1);
+      }
+    });
+
+    function showTreasureScene() {
+      // Oak Grove: final treasure under oak
+      showMessage("Blackberry: \"The clue said: 'Where the blackberry vines meet the old oak.' Tap the oak!\"", 6000);
+
+      // Find oak object
+      objects.forEach(obj => {
+        obj.addEventListener('click', () => {
+          treasureSound.currentTime = 0;
+          treasureSound.play();
+          createParticles(parseInt(obj.style.left) + 40, parseInt(obj.style.top) + 40, "#ffd700");
+          showMessage("Blackberry: \"You found the treasure! The path of the unknown awaits...\"", 8000);
+        }, { once: true });
+      });
+    }
+
+    // --- Creatures ---
+    function spawnCreatures(level) {
+      const count = 3;
+      for (let i = 0; i < count; i++) {
+        const c = document.createElement('img');
+        c.src = level.creatures[Math.floor(Math.random() * level.creatures.length)];
+        c.className = 'creature';
+        const x = Math.random() * (window.innerWidth - 80);
+        const y = Math.random() * (window.innerHeight - 160) + 80;
+        c.style.left = x + "px";
+        c.style.top = y + "px";
+
+        c.addEventListener('click', () => {
+          creatureSound.currentTime = 0;
+          creatureSound.play();
+          createParticles(x + 30, y + 30, "#ffffff");
+          showMessage("Blackberry: \"Did you see that? The forest creatures know where the berries hide.\"", 3000);
+          // Creature runs away
+          c.style.transition = "transform 0.8s ease, opacity 0.8s ease";
+          c.style.transform = "translateY(-100px)";
+          c.style.opacity = "0";
+          setTimeout(() => c.remove(), 800);
+        });
+
+        gameArea.appendChild(c);
+        creatures.push(c);
+      }
+    }
+
+    // --- Random events ---
+    function triggerRandomEvent() {
+      const eventType = Math.random();
+      if (eventType < 0.5) {
+        // Leaves falling
+        const x = Math.random() * window.innerWidth;
+        createFallingLeaf(x);
+      } else {
+        // Distant rustle
+        rustlingSound.currentTime = 0;
+        rustlingSound.play();
+        showMessage("Blackberry: \"Did you hear that? Something moved in the bushes...\"", 2500);
+      }
+    }
+
+    function createFallingLeaf(x) {
+      const leaf = document.createElement('div');
+      leaf.className = 'particle';
+      leaf.style.background = "#a0522d";
+      leaf.style.left = x + "px";
+      leaf.style.top = "-10px";
+      gameArea.appendChild(leaf);
+
+      const duration = 4000;
+      const start = performance.now();
+
+      function animateLeaf(time) {
+        const t = (time - start) / duration;
+        if (t >= 1) {
+          leaf.remove();
+          return;
+        }
+        const y = t * window.innerHeight;
+        const sway = Math.sin(t * 6) * 30;
+        leaf.style.top = y + "px";
+        leaf.style.left = (x + sway) + "px";
+        requestAnimationFrame(animateLeaf);
+      }
+      requestAnimationFrame(animateLeaf);
+    }
+
+    // --- Particle effects ---
+    function createParticles(x, y, color) {
+      for (let i = 0; i < 8; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        p.style.background = color;
+        p.style.left = x + "px";
+        p.style.top = y + "px";
+        gameArea.appendChild(p);
+
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 40 + Math.random() * 40;
+        const dx = Math.cos(angle) * speed;
+        const dy = Math.sin(angle) * speed;
+        const duration = 500;
+        const start = performance.now();
+
+        function animate(time) {
+          const t = (time - start) / duration;
+          if (t >= 1) {
+            p.remove();
+            return;
+          }
+          p.style.left = (x + dx * t) + "px";
+          p.style.top = (y + dy * t) + "px";
+          p.style.opacity = (1 - t).toString();
+          requestAnimationFrame(animate);
+        }
+        requestAnimationFrame(animate);
+      }
+    }
+
+    // --- Init ---
+    window.addEventListener('load', () => {
+      createPlayer();
+      startLevel(0);
+    });
   </script>
 </body>
 </html>
