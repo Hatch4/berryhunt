@@ -107,16 +107,6 @@
       padding: 6px 12px;
       font-size: 0.9em;
     }
-    #searchButton {
-      position:absolute;
-      bottom:20px;
-      left:50%;
-      transform:translateX(-50%);
-      padding:10px 20px;
-      font-size:1.2em;
-      display:none;
-      z-index:2000;
-    }
   </style>
 </head>
 <body>
@@ -135,8 +125,6 @@
       <p>The berries form a trail leading to the Oak Grove. The treasure lies beneath the old oak where the vines meet its roots.</p>
       <button id="goToOakButton">Travel to Oak Grove</button>
     </div>
-
-    <button id="searchButton">Search</button>
   </div>
 
   <script>
@@ -147,34 +135,33 @@
     const messageBox = document.getElementById('messageBox');
     const mapOverlay = document.getElementById('mapOverlay');
     const goToOakButton = document.getElementById('goToOakButton');
-    const searchButton = document.getElementById('searchButton');
 
     // --- Level data ---
     const levelData = [
       {
         name: "Meadow",
-        background: "https://upload.wikimedia.org/wikipedia/commons/4/4d/Grass_texture.jpg",
+        background: "images/bg_meadow.jpg",
         objects: ["images/tree.png", "images/bush.png"],
         creatures: ["images/rabbit.png"],
         berries: 5
       },
       {
         name: "Forest Edge",
-        background: "https://upload.wikimedia.org/wikipedia/commons/6/6f/Forest_path.jpg",
+        background: "images/bg_forestedge.jpg",
         objects: ["images/tree.png", "images/bush.png", "images/log.png"],
         creatures: ["images/squirrel.png"],
         berries: 5
       },
       {
         name: "Deep Woods",
-        background: "https://upload.wikimedia.org/wikipedia/commons/3/3f/Dark_forest.jpg",
+        background: "images/bg_deepwoods.jpg",
         objects: ["images/tree.png", "images/bush.png", "images/rock.png"],
         creatures: ["images/owl.png"],
         berries: 5
       },
       {
         name: "Oak Grove",
-        background: "https://upload.wikimedia.org/wikipedia/commons/5/5c/Oak_tree.jpg",
+        background: "images/bg_oakgrove.jpg",
         objects: ["images/oak.png", "images/bush.png"],
         creatures: ["images/bird.png"],
         berries: 0
@@ -183,7 +170,7 @@
 
     const berryImage = "images/berry.png";
 
-    // Sounds (replace with your own local files)
+    // Sounds (MP3 only for iOS)
     const ambientSounds = [
       new Audio("sounds/ambient_meadow.mp3"),
       new Audio("sounds/ambient_forest.mp3"),
@@ -205,15 +192,11 @@
     let creatures = [];
     let randomEventTimer = null;
 
-    let currentSearchTarget = null;
-    let currentSearchTapsRequired = 1;
-    let currentSearchTaps = 0;
-
     // --- Player setup ---
     function createPlayer() {
       player = document.createElement('img');
       player.id = "player";
-      player.src = "images/blackberry.png"; // your avatar
+      player.src = "images/blackberry.png";
       player.style.left = "50%";
       player.style.top = "50%";
       player.style.transform = "translate(-50%, -50%)";
@@ -224,14 +207,11 @@
           e.target.classList.contains('object') ||
           e.target.classList.contains('berry') ||
           e.target.classList.contains('creature') ||
-          e.target.id === 'searchButton' ||
           e.target.id === 'goToOakButton'
-        ) {
-          return;
-        }
+        ) return;
+
         const rect = gameArea.getBoundingClientRect();
         movePlayerTo(e.clientX - rect.left, e.clientY - rect.top);
-        hideSearchButton();
       });
     }
 
@@ -277,7 +257,6 @@
       objects = [];
       creatures = [];
       mapOverlay.style.display = "none";
-      hideSearchButton();
 
       ambientSounds.forEach(a => { a.pause(); a.currentTime = 0; });
       ambientSounds[index].play().catch(() => {});
@@ -305,27 +284,32 @@
         obj.style.top = y + "px";
 
         if (berryPositions.has(i)) {
-          const tapsRequired = Math.random() < 0.4 ? 3 : 1;
+          let tapsRequired = Math.random() < 0.4 ? 3 : 1;
 
           obj.addEventListener('click', () => {
-            const objX = parseInt(obj.style.left);
-            const objY = parseInt(obj.style.top);
-            movePlayerTo(objX, objY);
-            waitForArrival(objX, objY, () => {
-              showSearchButton(obj, tapsRequired);
+            movePlayerTo(x, y);
+            waitForArrival(x, y, () => {
+              rustlingSound.currentTime = 0;
+              rustlingSound.play();
+              createParticles(x + 40, y + 40, "#ffaa00");
+
+              tapsRequired--;
+              if (tapsRequired <= 0) {
+                obj.remove();
+                spawnBerryAt(x + 20, y + 20);
+              } else {
+                showMessage("Blackberry: \"Hmm… keep checking this one.\"", 1500);
+              }
             });
           });
         } else {
           obj.addEventListener('click', () => {
-            const objX = parseInt(obj.style.left);
-            const objY = parseInt(obj.style.top);
-            movePlayerTo(objX, objY);
-            waitForArrival(objX, objY, () => {
+            movePlayerTo(x, y);
+            waitForArrival(x, y, () => {
               rustlingSound.currentTime = 0;
               rustlingSound.play();
-              createParticles(objX + 40, objY + 40, "#00ff00");
+              createParticles(x + 40, y + 40, "#00ff00");
               obj.remove();
-              hideSearchButton();
             });
           });
         }
@@ -349,39 +333,6 @@
         showMessage("Blackberry: \"We've reached the Oak Grove. The treasure must be here.\"", 4000);
         showTreasureScene();
       }
-    }
-
-    // --- Search button logic ---
-    function showSearchButton(obj, tapsRequired = 1) {
-      currentSearchTarget = obj;
-      currentSearchTapsRequired = tapsRequired;
-      currentSearchTaps = 0;
-      searchButton.style.display = "block";
-
-      searchButton.onclick = () => {
-        if (!currentSearchTarget) return;
-        const objX = parseInt(currentSearchTarget.style.left);
-        const objY = parseInt(currentSearchTarget.style.top);
-
-        currentSearchTaps++;
-        rustlingSound.currentTime = 0;
-        rustlingSound.play();
-        createParticles(objX + 40, objY + 40, "#ffaa00");
-
-        if (currentSearchTaps >= currentSearchTapsRequired) {
-          searchButton.style.display = "none";
-          currentSearchTarget.remove();
-          spawnBerryAt(objX + 20, objY + 20);
-          currentSearchTarget = null;
-        } else {
-          showMessage("Blackberry: \"Hmm, something's hidden here... keep searching!\"", 1500);
-        }
-      };
-    }
-
-    function hideSearchButton() {
-      searchButton.style.display = "none";
-      currentSearchTarget = null;
     }
 
     // --- Berry handling ---
@@ -431,13 +382,13 @@
 
       objects.forEach(obj => {
         obj.addEventListener('click', () => {
-          const objX = parseInt(obj.style.left);
-          const objY = parseInt(obj.style.top);
-          movePlayerTo(objX, objY);
-          waitForArrival(objX, objY, () => {
+          const x = parseInt(obj.style.left);
+          const y = parseInt(obj.style.top);
+          movePlayerTo(x, y);
+          waitForArrival(x, y, () => {
             treasureSound.currentTime = 0;
             treasureSound.play();
-            createParticles(objX + 40, objY + 40, "#ffd700");
+            createParticles(x + 40, y + 40, "#ffd700");
             showMessage("Blackberry: \"You found the treasure! The path of the unknown awaits...\"", 8000);
           });
         }, { once: true });
@@ -551,3 +502,4 @@
   </script>
 </body>
 </html>
+
