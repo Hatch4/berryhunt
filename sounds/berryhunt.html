@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Hidden Berry Hunt</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      background: #a8d08d;
+      font-family: sans-serif;
+      text-align: center;
+      margin: 0;
+      overflow: hidden;
+    }
+    #gameArea {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+    }
+    .object, .berry {
+      position: absolute;
+      touch-action: manipulation;
+    }
+    .object {
+      width: 80px;
+      height: 80px;
+      cursor: pointer;
+    }
+    .berry {
+      width: 40px;
+      display: none;
+    }
+    #clue {
+      display: none;
+      font-size: 1.5em;
+      background: rgba(255,255,255,0.8);
+      padding: 10px;
+      border-radius: 8px;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    #counter {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(255,255,255,0.7);
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 1.2em;
+    }
+  </style>
+</head>
+<body>
+  <div id="gameArea">
+    <div id="counter">Berries left: <span id="count"></span></div>
+    <div id="clue">🍓 Clue: "The treasure is near the waterfall."</div>
+  </div>
+
+  <script>
+    const gameArea = document.getElementById('gameArea');
+    const berryCount = 5;
+    let collected = 0;
+    const countDisplay = document.getElementById('count');
+    countDisplay.textContent = berryCount;
+
+    const objects = [
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/Bush_icon.svg/80px-Bush_icon.svg.png',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Rock_icon.svg/80px-Rock_icon.svg.png'
+    ];
+
+    for (let i = 0; i < berryCount; i++) {
+      const obj = document.createElement('img');
+      obj.src = objects[Math.floor(Math.random() * objects.length)];
+      obj.className = 'object';
+      obj.style.top = Math.random() * (window.innerHeight - 100) + 'px';
+      obj.style.left = Math.random() * (window.innerWidth - 100) + 'px';
+
+      const berry = document.createElement('img');
+      berry.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Strawberry_icon.svg/40px-Strawberry_icon.svg.png';
+      berry.className = 'berry';
+      berry.style.top = obj.style.top;
+      berry.style.left = obj.style.left;
+
+      obj.addEventListener('click', () => revealBerry(berry, obj));
+      obj.addEventListener('touchstart', () => revealBerry(berry, obj));
+
+      gameArea.appendChild(berry);
+      gameArea.appendChild(obj);
+    }
+
+    function revealBerry(berry, obj) {
+      berry.style.display = 'block';
+      obj.remove();
+      berry.addEventListener('click', () => collectBerry(berry));
+      berry.addEventListener('touchstart', () => collectBerry(berry));
+    }
+
+    function collectBerry(berry) {
+      berry.remove();
+      collected++;
+      countDisplay.textContent = berryCount - collected;
+      if (collected === berryCount) {
+        document.getElementById('clue').style.display = 'block';
+      }
+    }
+  </script>
+</body>
+</html>
